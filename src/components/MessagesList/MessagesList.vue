@@ -45,7 +45,6 @@ get the messagesList array and loop through the list to generate the messages.
 			:style="{ height: item.height + 'px' }"
 			v-bind="item"
 			:messages="item"
-			:last-read-message="unreadMessageMarkerId"
 			@deleteMessage="handleDeleteMessage" />
 		<template v-if="!messagesGroupedByAuthor.length">
 			<LoadingPlaceholder
@@ -132,7 +131,6 @@ export default {
 			previousScrollTopValue: null,
 
 			pollingErrorTimeout: 1,
-			lastReadMessage: 0,
 		}
 	},
 
@@ -225,13 +223,6 @@ export default {
 
 		scroller() {
 			return this.$refs.scroller
-		},
-
-		unreadMessageMarkerId() {
-			if (this.lastReadMessage !== this.$store.getters.getLastKnownMessageId(this.token)) {
-				return this.lastReadMessage
-			}
-			return 0
 		},
 	},
 
@@ -366,7 +357,6 @@ export default {
 
 		handleStartGettingMessagesPreconditions() {
 			if (this.token && this.isParticipant && !this.isInLobby) {
-				this.lastReadMessage = this.conversation.lastReadMessage
 				if (this.$store.getters.getFirstKnownMessageId(this.token) === null) {
 					this.$store.dispatch('setFirstKnownMessageId', {
 						token: this.token,
@@ -590,7 +580,73 @@ export default {
 				this.displayMessagesLoader = false
 				this.previousScrollTopValue = scrollTop
 			}
+
+			this.updateReadMarkerAfterScroll()
 		},
+
+		updateReadMarkerAfterScroll: debounce(async function() {
+			console.log('updateReadMarkerAfterScroll')
+			if (this.isChatScrolledToBottom) {
+				console.log('scrolled to bottom already: clearing')
+				this.$store.dispatch('clearLastReadMessage', { token: this.token })
+				return
+			}
+
+			// check which element is at the top of the window
+			let unreadMessageEl = this.scroller.getElementsByClassName('new-message-marker')
+			if (!unreadMessageEl || !unreadMessageEl.length) {
+				console.log('new message marker not found')
+				// either the marker is in one of the previous/next unloaded pages,
+				// so the user hasn't read the message under it yet, or all messages were already read
+				// so we don't need to move it
+				return
+			}
+
+			unreadMessageEl = unreadMessageEl[0].closest('.message')
+
+			console.log('unread marker found: ', unreadMessageEl, unreadMessageEl.__vue__)
+
+			const unreadMessageSeen = unreadMessageEl.__vue__.seen
+			console.log('unread marker has been seen: ', unreadMessageSeen)
+			if (!unreadMessageSeen) {
+				return
+			}
+
+			const scrollerRect = this.scroller.getBoundingClientRect()
+			console.log(scrollerRect)
+			// FIXME: message groups will likely mess this up in some scenarios...
+			// get the element at the bottom of the container by checking
+			// a point at the bottom-center of the scroller container
+			let lastVisibleMessageEl = document.elementFromPoint(scrollerRect.x + scrollerRect.width / 2, scrollerRect.y + scrollerRect.height - 5)
+			if (!lastVisibleMessageEl.classList.contains('message')) {
+				lastVisibleMessageEl = lastVisibleMessageEl.closest('.message')
+			}
+			if (!lastVisibleMessageEl) {
+				// might have hit the body, which means that we're close to button (or very unlucky)
+				console.debug('No element found at bottom of scroller')
+				// this.$store.dispatch('clearLastReadMessage', { token: this.token })
+				return
+			}
+
+			const lastVisibleMessageId = lastVisibleMessageEl.__vue__.id
+			console.log('topEl', lastVisibleMessageEl, lastVisibleMessageEl.__vue__)
+			console.log('message id:', lastVisibleMessageId)
+
+			// check if read marker is above or below the top element
+			if (unreadMessageSeen.offsetTop > lastVisibleMessageEl.offsetTop) {
+				// the user is located on a page above the marker so far
+				// that the marker is not yet visible, so we can assume that
+				// the messages in question have not been read yet
+				return
+			}
+
+			// TODO: also check if that message is fully visible, or offset it a little ?
+
+			console.log('move unread marker to message id:', lastVisibleMessageId)
+
+			// TODO: make cancellable in case of fast scrolling + slow server response
+			await this.$store.dispatch('updateLastReadMessage', { token: this.token, id: lastVisibleMessageId })
+		}, 1000),
 
 		/**
 		 * @param {object} options Event options

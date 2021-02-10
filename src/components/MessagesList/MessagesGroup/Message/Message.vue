@@ -143,7 +143,8 @@ the main body of the message as well as a quote.
 					</Actions>
 				</div>
 			</div>
-			<div v-if="lastReadMessage === id"
+			<div v-if="isLastReadMessage"
+				v-observe-visibility="lastReadMessageVisibilityChanged"
 				class="new-message-marker">
 				<span>{{ t('spreed', 'New messages') }}</span>
 			</div>
@@ -314,14 +315,6 @@ export default {
 			type: String,
 			default: '',
 		},
-
-		/**
-		 * Id of the last read message when the chat was opened
-		 */
-		lastReadMessage: {
-			type: Number,
-			default: 0,
-		},
 	},
 
 	data() {
@@ -331,10 +324,19 @@ export default {
 			isTallEnough: false,
 			showReloadButton: false,
 			isDeleting: false,
+			// whether the message was seen, only used if this was marked as last read message
+			seen: false,
 		}
 	},
 
 	computed: {
+		isLastReadMessage() {
+			return this.id === this.conversation.lastReadMessage
+				// don't display on last message
+				&& this.conversation.lastMessage
+				&& this.id !== this.conversation.lastMessage.id
+		},
+
 		messageObject() {
 			return this.$store.getters.message(this.token, this.id)
 		},
@@ -546,6 +548,12 @@ export default {
 	},
 
 	methods: {
+		lastReadMessageVisibilityChanged(isVisible) {
+			if (isVisible) {
+				this.seen = true
+			}
+		},
+
 		highlightAnimation() {
 			// trigger CSS highlight animation by setting a class
 			this.$refs.message.classList.add('highlight-animation')
