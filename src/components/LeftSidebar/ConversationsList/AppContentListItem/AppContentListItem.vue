@@ -67,7 +67,9 @@
 					<Actions
 						ref="actions"
 						menu-align="right"
-						:aria-label="conversationSettingsAriaLabel">
+						:aria-label="conversationSettingsAriaLabel"
+						@open="lockActionsVisibility = true"
+						@close="onActionsClosed">
 						<slot
 							name="actions" />
 					</Actions>
@@ -129,7 +131,9 @@ export default {
 	data() {
 		return {
 			linkIsFocused: false,
+			linkIsHovered: false,
 			displayActions: false,
+			lockActionsVisibility: false,
 		}
 	},
 	computed: {
@@ -175,6 +179,7 @@ export default {
 
 		handleHover() {
 			this.showActions()
+			this.linkIsHovered = true
 		},
 
 		handleFocus() {
@@ -193,7 +198,11 @@ export default {
 		},
 
 		handleMouseleave() {
-			this.displayActions = false
+			this.linkIsHovered = false
+			if (!this.lockActionsVisibility) {
+				this.displayActions = false
+			}
+
 		},
 
 		handleTab(e) {
@@ -203,10 +212,18 @@ export default {
 				this.$refs.actions.$refs.menuButton.focus()
 				this.linkIsFocused = false
 			} else {
-				this.displayActions = false
+				if (!this.lockActionsVisibility) {
+					this.displayActions = false
+				}
 				this.$refs.actions.$refs.menuButton.blur()
 			}
 
+		},
+
+		onActionsClosed() {
+			if (!this.linkIsHovered || !this.linkIsFocused) {
+				this.displayActions = false
+			}
 		},
 	},
 }
