@@ -584,6 +584,86 @@ export default {
 			this.updateReadMarkerAfterScroll()
 		},
 
+		/**
+		 * Finds the first unread message
+		 *
+		 * @returns {object} Vue component of the message or null if not found
+		 */
+		findFirstUnreadMessage() {
+			// check which element is at the top of the window
+			const el = this.scroller.getElementsByClassName('new-message-marker')
+			if (!el || !el.length) {
+				// either the marker is in one of the previous/next unloaded pages,
+				// so the user hasn't read the message under it yet, or all messages were already read
+				// so we don't need to move it
+				return null
+			}
+
+			return el[0].closest('.message')?.__vue__
+		},
+
+		/**
+		 * Finds the last message that is fully visible in the scroller viewport
+		 *
+		 * @returns {object} Vue component of the message or null if not found
+		 */
+		findLastVisibleMessage() {
+			const scrollerRect = this.scroller.getBoundingClientRect()
+			// FIXME: message groups will likely mess this up in some scenarios...
+			// get the element at the bottom of the container by checking
+			// a point at the bottom-center of the scroller container
+			let el = document.elementFromPoint(scrollerRect.x + scrollerRect.width / 2, scrollerRect.y + scrollerRect.height - 5)
+			if (!el.classList.contains('message')) {
+				el = el.closest('.message')
+			}
+			if (!el) {
+				// might have hit the body, which means that we're close to button (or very unlucky)
+				console.debug('No element found at bottom of scroller')
+				// this.$store.dispatch('clearLastReadMessage', { token: this.token })
+				return null
+			}
+
+			// is the bottom of the message visible or is it intersecting with the container's bottom part ?
+			if (el.offsetTop + el.offsetHeight > scrollerRect.height) {
+				console.log('message is overlapping with the bottom, searching for the previous one')
+				// pick the previous message
+				let searchEl = el
+				do {
+					searchEl = searchEl.previousSibling
+				} while (!searchEl?.matches('.message') && searchEl?.previousSibling)
+
+				// nothing found, need to search in the previous message group then
+				if (searchEl) {
+					console.log('foudn previous message', el)
+					el = searchEl
+				} else {
+					console.log('no previous message found, trying the previous message group')
+					searchEl = el.closest('.message-group').previousSibling
+					while (searchEl && !searchEl.matches('.message-group')) {
+						searchEl = searchEl.previousSibling
+					}
+
+					// found previous message group
+					if (searchEl) {
+						// pick the last message
+						console.log('found previous message group', searchEl)
+						searchEl = searchEl.querySelector('.message:last-child')
+					}
+
+					if (searchEl) {
+						// we found it!
+						console.log('found previous message', searchEl)
+						el = searchEl
+					}
+
+					// otherwise fall back to whatever we had in the first place
+				}
+			}
+
+			console.log('last visible message is: ', el)
+			return el.__vue__
+		},
+
 		updateReadMarkerAfterScroll: debounce(async function() {
 			console.log('updateReadMarkerAfterScroll')
 			if (this.isChatScrolledToBottom) {
@@ -592,60 +672,29 @@ export default {
 				return
 			}
 
-			// check which element is at the top of the window
-			let unreadMessageEl = this.scroller.getElementsByClassName('new-message-marker')
-			if (!unreadMessageEl || !unreadMessageEl.length) {
-				console.log('new message marker not found')
-				// either the marker is in one of the previous/next unloaded pages,
-				// so the user hasn't read the message under it yet, or all messages were already read
-				// so we don't need to move it
+			const unreadMessage = this.findFirstUnreadMessage()
+			console.log('unread marker', unreadMessage, unreadMessage?.seen)
+			if (!unreadMessage?.seen) {
 				return
 			}
 
-			unreadMessageEl = unreadMessageEl[0].closest('.message')
+			const lastVisibleMessage = this.findLastVisibleMessage()
 
-			console.log('unread marker found: ', unreadMessageEl, unreadMessageEl.__vue__)
-
-			const unreadMessageSeen = unreadMessageEl.__vue__.seen
-			console.log('unread marker has been seen: ', unreadMessageSeen)
-			if (!unreadMessageSeen) {
-				return
-			}
-
-			const scrollerRect = this.scroller.getBoundingClientRect()
-			console.log(scrollerRect)
-			// FIXME: message groups will likely mess this up in some scenarios...
-			// get the element at the bottom of the container by checking
-			// a point at the bottom-center of the scroller container
-			let lastVisibleMessageEl = document.elementFromPoint(scrollerRect.x + scrollerRect.width / 2, scrollerRect.y + scrollerRect.height - 5)
-			if (!lastVisibleMessageEl.classList.contains('message')) {
-				lastVisibleMessageEl = lastVisibleMessageEl.closest('.message')
-			}
-			if (!lastVisibleMessageEl) {
-				// might have hit the body, which means that we're close to button (or very unlucky)
-				console.debug('No element found at bottom of scroller')
-				// this.$store.dispatch('clearLastReadMessage', { token: this.token })
-				return
-			}
-
-			const lastVisibleMessageId = lastVisibleMessageEl.__vue__.id
-			console.log('topEl', lastVisibleMessageEl, lastVisibleMessageEl.__vue__)
-			console.log('message id:', lastVisibleMessageId)
+			console.log('lastVisibleMessage', lastVisibleMessage, lastVisibleMessage?.el)
+			console.log('message id:', lastVisibleMessage.id)
 
 			// check if read marker is above or below the top element
-			if (unreadMessageSeen.offsetTop > lastVisibleMessageEl.offsetTop) {
+			if (unreadMessage.el.offsetTop > lastVisibleMessage.el.offsetTop) {
 				// the user is located on a page above the marker so far
 				// that the marker is not yet visible, so we can assume that
 				// the messages in question have not been read yet
 				return
 			}
 
-			// TODO: also check if that message is fully visible, or offset it a little ?
-
-			console.log('move unread marker to message id:', lastVisibleMessageId)
+			console.log('move unread marker to message id:', lastVisibleMessage.id)
 
 			// TODO: make cancellable in case of fast scrolling + slow server response
-			await this.$store.dispatch('updateLastReadMessage', { token: this.token, id: lastVisibleMessageId })
+			await this.$store.dispatch('updateLastReadMessage', { token: this.token, id: lastVisibleMessage.id })
 		}, 1000),
 
 		/**
