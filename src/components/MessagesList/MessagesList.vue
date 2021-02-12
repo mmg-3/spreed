@@ -591,15 +591,12 @@ export default {
 		 */
 		findFirstUnreadMessage() {
 			// check which element is at the top of the window
-			const el = this.scroller.getElementsByClassName('new-message-marker')
-			if (!el || !el.length) {
-				// either the marker is in one of the previous/next unloaded pages,
-				// so the user hasn't read the message under it yet, or all messages were already read
-				// so we don't need to move it
+			const el = this.scroller.querySelector('.new-message-marker')
+			if (!el) {
 				return null
 			}
 
-			return el[0].closest('.message')?.__vue__
+			return el.closest('.message')?.__vue__
 		},
 
 		/**
@@ -679,16 +676,24 @@ export default {
 		},
 
 		updateReadMarkerAfterScroll: debounce(async function() {
+			// note: this method is also called by the automatic scrolling
 			console.log('updateReadMarkerAfterScroll')
-			if (this.isChatScrolledToBottom) {
-				console.log('scrolled to bottom already: clearing')
-				this.$store.dispatch('clearLastReadMessage', { token: this.token })
+
+			if (!document.hasFocus()) {
+				// don't update marker if window is not focussed
 				return
 			}
 
 			const unreadMessage = this.findFirstUnreadMessage()
 			console.log('unread marker', unreadMessage, unreadMessage?.seen)
 			if (!unreadMessage?.seen) {
+				return
+			}
+
+			if (this.isChatScrolledToBottom) {
+				// no need to bother finding the last visible element
+				console.log('scrolled to bottom already: clearing')
+				this.$store.dispatch('clearLastReadMessage', { token: this.token })
 				return
 			}
 
