@@ -603,65 +603,79 @@ export default {
 		},
 
 		/**
-		 * Finds the last message that is fully visible in the scroller viewport
+		 * Find the next message element following the given message DOM element.
 		 *
-		 * @returns {object} Vue component of the message or null if not found
+		 * This traverses the next messages and message groups to find the next one.
+		 *
+		 * @param {object} messageEl DOM element for message to start with
+		 * @returns {object} DOM element for the next message or null if none found
 		 */
-		findLastVisibleMessage() {
-			const scrollerRect = this.scroller.getBoundingClientRect()
-			// FIXME: message groups will likely mess this up in some scenarios...
-			// get the element at the bottom of the container by checking
-			// a point at the bottom-center of the scroller container
-			let el = document.elementFromPoint(scrollerRect.x + scrollerRect.width / 2, scrollerRect.y + scrollerRect.height - 5)
-			if (!el.classList.contains('message')) {
-				el = el.closest('.message')
-			}
-			if (!el) {
-				// might have hit the body, which means that we're close to button (or very unlucky)
-				console.debug('No element found at bottom of scroller')
-				// this.$store.dispatch('clearLastReadMessage', { token: this.token })
-				return null
+		findNextMessageElement(messageEl) {
+			// pick the previous message
+			let searchEl = messageEl.nextElementSibling
+			while (searchEl && !searchEl.matches('.message')) {
+				searchEl = searchEl.nextElementSibling
 			}
 
-			// is the bottom of the message visible or is it intersecting with the container's bottom part ?
-			if (el.offsetTop + el.offsetHeight > scrollerRect.height) {
-				console.log('message is overlapping with the bottom, searching for the previous one')
-				// pick the previous message
-				let searchEl = el
-				do {
-					searchEl = searchEl.previousSibling
-				} while (!searchEl?.matches('.message') && searchEl?.previousSibling)
+			if (searchEl) {
+				console.log('found next message', searchEl)
+				return searchEl
+			} else {
+				// nothing found, then need to search in the next message group
+				console.log('no next message found, trying the next message group')
+				searchEl = messageEl.closest('.message-group').nextElementSibling
+				while (searchEl && !searchEl.matches('.message-group')) {
+					searchEl = searchEl.nextElementSibling
+				}
 
-				// nothing found, need to search in the previous message group then
+				// found the next message group
 				if (searchEl) {
-					console.log('foudn previous message', el)
-					el = searchEl
-				} else {
-					console.log('no previous message found, trying the previous message group')
-					searchEl = el.closest('.message-group').previousSibling
-					while (searchEl && !searchEl.matches('.message-group')) {
-						searchEl = searchEl.previousSibling
-					}
+					// pick the first message
+					console.log('found next message group', searchEl)
+					searchEl = searchEl.querySelector('.message:first-child')
+				}
 
-					// found previous message group
-					if (searchEl) {
-						// pick the last message
-						console.log('found previous message group', searchEl)
-						searchEl = searchEl.querySelector('.message:last-child')
-					}
-
-					if (searchEl) {
-						// we found it!
-						console.log('found previous message', searchEl)
-						el = searchEl
-					}
-
-					// otherwise fall back to whatever we had in the first place
+				if (searchEl) {
+					// we found it!
+					console.log('found next message', searchEl)
+					return searchEl
 				}
 			}
 
-			console.log('last visible message is: ', el)
-			return el.__vue__
+			return null
+		},
+
+		/**
+		 * Finds the last message that is fully visible in the scroller viewport
+		 *
+		 * Starts searching forward after the given message element until we reach
+		 * the bottom of the viewport.
+		 *
+		 * @param {object} messageEl message element after which to start searching
+		 * @returns {object} Vue component of the message or null if not found
+		 */
+		findLastVisibleMessage(messageEl) {
+			let el = messageEl
+			let previousEl = el
+			const scrollTop = this.scroller.scrollTop
+			const scrollerHeight = this.scroller.offsetHeight
+			while (el) {
+				// is the message element fully visible with no intersection with the bottom border ?
+				console.log('boundaries: el: ', el.offsetTop, el.offsetHeight)
+				console.log('scroller offset height: ', scrollTop, scrollerHeight, scrollTop + scrollerHeight)
+				console.log('boundaries: ', el.offsetTop + el.offsetHeight + 100)
+				if (el.offsetTop + el.offsetHeight > scrollTop + scrollerHeight) {
+					// this means that the previous message we had was fully visible,
+					// so we return that
+					return previousEl.__vue__
+				}
+
+				previousEl = el
+				// note: for scability reasons we don't simply "get all elements"
+				el = this.findNextMessageElement(el)
+			}
+
+			return previousEl
 		},
 
 		updateReadMarkerAfterScroll: debounce(async function() {
@@ -678,18 +692,14 @@ export default {
 				return
 			}
 
-			const lastVisibleMessage = this.findLastVisibleMessage()
-
-			console.log('lastVisibleMessage', lastVisibleMessage, lastVisibleMessage?.el)
-			console.log('message id:', lastVisibleMessage.id)
-
-			// check if read marker is above or below the top element
-			if (unreadMessage.el.offsetTop > lastVisibleMessage.el.offsetTop) {
-				// the user is located on a page above the marker so far
-				// that the marker is not yet visible, so we can assume that
-				// the messages in question have not been read yet
+			const lastVisibleMessage = this.findLastVisibleMessage(unreadMessage.$refs.message)
+			if (!lastVisibleMessage) {
+				console.log('No last visible message found')
 				return
 			}
+
+			console.log('lastVisibleMessage', lastVisibleMessage)
+			console.log('message id:', lastVisibleMessage.id)
 
 			console.log('move unread marker to message id:', lastVisibleMessage.id)
 
