@@ -684,6 +684,13 @@ export default {
 				return
 			}
 
+			if (this.conversation.lastReadMessage === 0) {
+				// "0" means last message, we call clear to set it to the actual
+				// last rendered message
+				this.$store.dispatch('clearLastReadMessage', { token: this.token })
+				return
+			}
+
 			const unreadMessage = this.findFirstUnreadMessage()
 			console.log('unread marker', unreadMessage, unreadMessage?.seen)
 			if (!unreadMessage?.seen) {
