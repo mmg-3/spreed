@@ -33,7 +33,7 @@
 		</AppSettingsSection>
 		<!-- Notifications settings -->
 		<AppSettingsSection
-			:title="t('spreed', 'Notifications')"
+			:title="t('spreed', 'Chat Notifications')"
 			class="app-settings-section">
 			<NotificationsSettings :conversation="conversation" />
 		</AppSettingsSection>
@@ -66,10 +66,7 @@
 		<AppSettingsSection
 			v-if="canLeaveConversation || canDeleteConversation"
 			:title="t('spreed', 'Danger zone')"
-			class="app-settings-section"
-			:token="token"
-			:can-leave-conversation="canLeaveConversation"
-			:can-delete-conversation="canDeleteConversation">
+			class="app-settings-section">
 			<DangerZone
 				:conversation="conversation"
 				:can-leave-conversation="canLeaveConversation"

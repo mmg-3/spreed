@@ -22,7 +22,7 @@
 <template>
 	<div>
 		<div class="app-settings-section__hint">
-			{{ t('spreed', 'Set the notification level for the current conversation.') }}
+			{{ t('spreed', 'Set the notification level for the current conversation. This will affect only the notifications you receive.') }}
 		</div>
 		<a
 			href="#"

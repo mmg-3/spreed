@@ -37,7 +37,6 @@
 </template>
 
 <script>
-// import { deleteConversation } from '../../../services/conversationsService'
 import { removeCurrentUserFromConversation } from '../../services/participantsService'
 import { showError } from '@nextcloud/dialogs'
 import { deleteConversation } from '../../services/conversationsService'
@@ -87,7 +86,7 @@ export default {
 				if (error.response && error.response.status === 400) {
 					showError(t('spreed', 'You need to promote a new moderator before you can leave the conversation.'))
 				} else {
-					console.debug(`error while removing yourself from conversation ${error}`)
+					console.error(`error while removing yourself from conversation ${error}`)
 				}
 			}
 		},
@@ -117,6 +116,7 @@ export default {
 						this.hideConversationSettings()
 					} catch (error) {
 						console.debug(`error while deleting conversation ${error}`)
+						showError(t('spreed', 'Error while deleting conversation'))
 					}
 				}.bind(this)
 			)
