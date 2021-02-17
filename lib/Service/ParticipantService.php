@@ -586,6 +586,7 @@ class ParticipantService {
 	 * @return Participant[]
 	 */
 	public function getParticipantsForRoom(Room $room): array {
+		// FIXME Need to make sure a user is skipped when at least one session is in the call
 		$query = $this->connection->getQueryBuilder();
 
 		$helper = new SelectHelper();
@@ -605,15 +606,15 @@ class ParticipantService {
 	 * @param Room $room
 	 * @return Participant[]
 	 */
-	public function getParticipantsWithSession(Room $room): array {
+	public function getParticipantsForAllSessions(Room $room): array {
 		$query = $this->connection->getQueryBuilder();
 
 		$helper = new SelectHelper();
 		$helper->selectAttendeesTable($query);
 		$helper->selectSessionsTable($query);
-		$query->from('talk_attendees', 'a')
+		$query->from('talk_sessions', 's')
 			->leftJoin(
-				'a', 'talk_sessions', 's',
+				's', 'talk_attendees', 'a',
 				$query->expr()->eq('s.attendee_id', 'a.id')
 			)
 			->where($query->expr()->eq('a.room_id', $query->createNamedParameter($room->getId(), IQueryBuilder::PARAM_INT)))
@@ -654,6 +655,7 @@ class ParticipantService {
 	 * @return Participant[]
 	 */
 	public function getParticipantsByNotificationLevel(Room $room, int $notificationLevel): array {
+		// FIXME check for correct behaviour on ways this is called
 		$query = $this->connection->getQueryBuilder();
 
 		$helper = new SelectHelper();
@@ -728,6 +730,7 @@ class ParticipantService {
 	 * @return string[]
 	 */
 	public function getParticipantUserIdsNotInCall(Room $room): array {
+		// FIXME Need to make sure a user is skipped when at least one session is in the call
 		$query = $this->connection->getQueryBuilder();
 
 		$query->select('a.actor_id')

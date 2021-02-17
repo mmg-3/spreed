@@ -382,6 +382,7 @@ class SignalingController extends OCSController {
 		$timestamp = min($this->timeFactory->getTime() - (self::PULL_MESSAGES_TIMEOUT + 10), $pingTimestamp);
 		// "- 1" is needed because only the participants whose last ping is
 		// greater than the given timestamp are returned.
+		// FIXME needs to select session and left join attendees instead!
 		$participants = $this->participantService->getParticipantsForRoom($room);
 		foreach ($participants as $participant) {
 			$session = $participant->getSession();
