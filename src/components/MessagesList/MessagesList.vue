@@ -130,6 +130,11 @@ export default {
 			 */
 			previousScrollTopValue: null,
 
+			/**
+			 * Flag whether an automatic scrolling is being done.
+			 */
+			autoScrollingInProgres: false,
+
 			pollingErrorTimeout: 1,
 		}
 	},
@@ -676,7 +681,11 @@ export default {
 		},
 
 		updateReadMarkerAfterScroll: debounce(async function() {
-			// note: this method is also called by the automatic scrolling
+			if (this.autoScrollingInProgress) {
+				console.log('updateReadMarkerAfterScroll: skipping due to autoscroll')
+				return
+			}
+
 			console.log('updateReadMarkerAfterScroll')
 
 			if (!document.hasFocus()) {
@@ -735,6 +744,7 @@ export default {
 		 */
 		smoothScrollToBottom() {
 			this.$nextTick(function() {
+				this.autoScrollingInProgress = true
 				if (this.$store.getters.windowIsVisible()) {
 					// scrollTo is used when the user is watching
 					this.scroller.scrollTo({
@@ -753,6 +763,7 @@ export default {
 					}
 					this.setChatScrolledToBottom(false)
 				}
+				this.autoScrollingInProgress = false
 			})
 		},
 		/**
