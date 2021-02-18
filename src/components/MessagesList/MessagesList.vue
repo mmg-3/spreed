@@ -136,6 +136,8 @@ export default {
 			autoScrollingInProgres: false,
 
 			pollingErrorTimeout: 1,
+
+			oldMessagesPromise: null,
 		}
 	},
 
@@ -439,7 +441,8 @@ export default {
 
 			// Make the request
 			try {
-				const messages = await request({ token, lastKnownMessageId, includeLastKnown: includeLastKnown ? '1' : '0' })
+				this.oldMessagesPromise = request({ token, lastKnownMessageId, includeLastKnown: includeLastKnown ? '1' : '0' })
+				const messages = await this.oldMessagesPromise
 				// Process each messages and adds it to the store
 				messages.data.ocs.data.forEach(message => {
 					if (message.actorType === 'guests') {
@@ -466,10 +469,12 @@ export default {
 						id: newestKnownMessageId,
 					})
 				}
+				this.oldMessagesPromise = null
 			} catch (exception) {
 				if (Axios.isCancel(exception)) {
 					console.debug('The request has been canceled', exception)
 				}
+				this.oldMessagesPromise = null
 			}
 		},
 
@@ -574,6 +579,10 @@ export default {
 				this.displayMessagesLoader = false
 				this.previousScrollTopValue = scrollTop
 			} else if (scrollHeight > elementHeight && scrollTop < 800 && scrollTop <= this.previousScrollTopValue) {
+				if (this.oldMessagesPromise) {
+					// already loading, don't do it twice
+					return
+				}
 				if (scrollTop === 0) {
 					this.displayMessagesLoader = true
 				}
