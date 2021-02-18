@@ -25,17 +25,17 @@
 		:aria-label="t('spreed', 'Conversation settings')"
 		:open.sync="showSettings"
 		:show-navigation="true">
-		<!-- Guest access -->
-		<AppSettingsSection
-			:title="t('spreed', 'Guests access')"
-			class="app-settings-section">
-			<LinkShareSettings ref="linkShareSettings" />
-		</AppSettingsSection>
 		<!-- Notifications settings -->
 		<AppSettingsSection
 			:title="t('spreed', 'Chat Notifications')"
 			class="app-settings-section">
 			<NotificationsSettings :conversation="conversation" />
+		</AppSettingsSection>
+		<!-- Guest access -->
+		<AppSettingsSection
+			:title="t('spreed', 'Guests access')"
+			class="app-settings-section">
+			<LinkShareSettings ref="linkShareSettings" />
 		</AppSettingsSection>
 		<!-- TODO sepatate these 2 settings and rename the settings sections
 		all the settings in this component are conversation settings. Proposal:
