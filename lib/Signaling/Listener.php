@@ -103,7 +103,7 @@ class Listener {
 			/** @var ParticipantService $participantService */
 			$participantService = \OC::$server->query(ParticipantService::class);
 
-			$participants = $participantService->getParticipantsForRoom($room);
+			$participants = $participantService->getParticipantsForAllSessions($room);
 			foreach ($participants as $participant) {
 				$session = $participant->getSession();
 				if ($session instanceof Session) {

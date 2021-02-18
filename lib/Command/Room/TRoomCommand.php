@@ -406,14 +406,9 @@ trait TRoomCommand {
 			return [];
 		}
 
-		$users = [];
-		$participants = $this->participantService->getParticipantsForRoom($room);
-		foreach ($participants as $participant) {
-			if ($participant->getAttendee()->getActorType() === Attendee::ACTOR_USERS
-				&& stripos($participant->getAttendee()->getActorId(), $context->getCurrentWord()) !== false) {
-				$users[] = $participant->getAttendee()->getActorId();
-			}
-		}
+		$users = array_filter($this->participantService->getParticipantUserIds($room), static function ($userId) use ($context) {
+			return stripos($userId, $context->getCurrentWord()) !== false;
+		});
 
 		return $users;
 	}
