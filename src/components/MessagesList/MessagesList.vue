@@ -629,11 +629,9 @@ export default {
 			}
 
 			if (searchEl) {
-				console.log('found next message', searchEl)
 				return searchEl
 			} else {
 				// nothing found, then need to search in the next message group
-				console.log('no next message found, trying the next message group')
 				searchEl = messageEl.closest('.message-group').nextElementSibling
 				while (searchEl && !searchEl.matches('.message-group')) {
 					searchEl = searchEl.nextElementSibling
@@ -642,13 +640,11 @@ export default {
 				// found the next message group
 				if (searchEl) {
 					// pick the first message
-					console.log('found next message group', searchEl)
 					searchEl = searchEl.querySelector('.message:first-child')
 				}
 
 				if (searchEl) {
 					// we found it!
-					console.log('found next message', searchEl)
 					return searchEl
 				}
 			}
@@ -672,9 +668,6 @@ export default {
 			const scrollerHeight = this.scroller.offsetHeight
 			while (el) {
 				// is the message element fully visible with no intersection with the bottom border ?
-				console.log('boundaries: el: ', el.offsetTop, el.offsetHeight)
-				console.log('scroller offset height: ', scrollTop, scrollerHeight, scrollTop + scrollerHeight)
-				console.log('boundaries: ', el.offsetTop + el.offsetHeight + 100)
 				if (el.offsetTop + el.offsetHeight > scrollTop + scrollerHeight) {
 					// this means that the previous message we had was fully visible,
 					// so we return that
@@ -691,11 +684,8 @@ export default {
 
 		updateReadMarkerAfterScroll: debounce(async function() {
 			if (this.autoScrollingInProgress) {
-				console.log('updateReadMarkerAfterScroll: skipping due to autoscroll')
 				return
 			}
-
-			console.log('updateReadMarkerAfterScroll')
 
 			if (!document.hasFocus()) {
 				// don't update marker if window is not focussed
@@ -710,28 +700,20 @@ export default {
 			}
 
 			const unreadMessage = this.findFirstUnreadMessage()
-			console.log('unread marker', unreadMessage, unreadMessage?.seen)
 			if (!unreadMessage?.seen) {
 				return
 			}
 
 			if (this.isChatScrolledToBottom) {
 				// no need to bother finding the last visible element
-				console.log('scrolled to bottom already: clearing')
 				this.$store.dispatch('clearLastReadMessage', { token: this.token })
 				return
 			}
 
 			const lastVisibleMessage = this.findLastVisibleMessage(unreadMessage.$refs.message)
 			if (!lastVisibleMessage) {
-				console.log('No last visible message found')
 				return
 			}
-
-			console.log('lastVisibleMessage', lastVisibleMessage)
-			console.log('message id:', lastVisibleMessage.id)
-
-			console.log('move unread marker to message id:', lastVisibleMessage.id)
 
 			// TODO: make cancellable in case of fast scrolling + slow server response
 			await this.$store.dispatch('updateLastReadMessage', { token: this.token, id: lastVisibleMessage.id })
